@@ -34,6 +34,12 @@ const FilePreviewModal = ({ file, isOpen, onClose }) => {
       setError(null);
       setContent("");
 
+      // For images, we don't need to fetch content - we'll use the preview URL
+      if (file.type.startsWith("image/")) {
+        setContent("image"); // Just a flag to indicate it's an image
+        return;
+      }
+
       const response = await fileAPI.downloadFile(file.id);
       const text = await response.data.text();
       setContent(text);
@@ -164,6 +170,25 @@ const FilePreviewModal = ({ file, isOpen, onClose }) => {
       );
     }
 
+    if (file.type.startsWith("image/")) {
+      const token = localStorage.getItem("token");
+      const imageUrl = `http://localhost:3001/api/files/${file.id}/preview?token=${token}`;
+
+      return (
+        <div className="image-preview-content">
+          <img
+            src={imageUrl}
+            alt={file.filename}
+            className="preview-image"
+            onError={(e) => {
+              console.error("Image preview error");
+              setError("Failed to load image preview");
+            }}
+          />
+        </div>
+      );
+    }
+
     switch (file.type) {
       case "text/markdown":
         return (
@@ -189,6 +214,9 @@ const FilePreviewModal = ({ file, isOpen, onClose }) => {
   };
 
   const getFileIcon = () => {
+    if (file.type.startsWith("image/")) {
+      return "🖼️";
+    }
     switch (file.type) {
       case "text/markdown":
         return "📝";
@@ -201,6 +229,9 @@ const FilePreviewModal = ({ file, isOpen, onClose }) => {
   };
 
   const getFileTypeLabel = () => {
+    if (file.type.startsWith("image/")) {
+      return "Image";
+    }
     switch (file.type) {
       case "text/markdown":
         return "Markdown";

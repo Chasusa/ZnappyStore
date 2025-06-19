@@ -218,7 +218,10 @@ const FileList = ({ refreshTrigger }) => {
 
   const isPreviewableFile = (type) => {
     return (
-      type === "text/plain" || type === "text/markdown" || type === "text/csv"
+      type === "text/plain" ||
+      type === "text/markdown" ||
+      type === "text/csv" ||
+      type.startsWith("image/")
     );
   };
 
