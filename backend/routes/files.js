@@ -135,6 +135,108 @@ router.get("/files", authenticateToken, (req, res) => {
   }
 });
 
+// DELETE /api/files/bulk - Bulk delete files endpoint
+router.delete("/files/bulk", authenticateToken, (req, res) => {
+  try {
+    const { fileIds } = req.body;
+
+    if (!fileIds || !Array.isArray(fileIds) || fileIds.length === 0) {
+      return res.status(400).json({
+        error: "Invalid request",
+        message: "File IDs array is required",
+      });
+    }
+
+    if (fileIds.length > 100) {
+      return res.status(400).json({
+        error: "Too many files",
+        message: "Cannot delete more than 100 files at once",
+      });
+    }
+
+    const results = {
+      deleted: [],
+      failed: [],
+      notFound: [],
+      accessDenied: [],
+    };
+
+    for (const fileId of fileIds) {
+      try {
+        // Find file in database
+        const file = findFileById(fileId);
+        if (!file) {
+          results.notFound.push(fileId);
+          continue;
+        }
+
+        // Check ownership
+        if (file.userId !== req.user.id) {
+          results.accessDenied.push({
+            id: fileId,
+            filename: file.originalName,
+          });
+          continue;
+        }
+
+        // Delete file from database
+        const deletedFile = deleteFileById(fileId);
+        if (!deletedFile) {
+          results.failed.push({
+            id: fileId,
+            filename: file.originalName,
+            error: "Database deletion failed",
+          });
+          continue;
+        }
+
+        // Delete physical file from disk
+        if (fs.existsSync(file.path)) {
+          try {
+            fs.unlinkSync(file.path);
+          } catch (error) {
+            console.error(`Error deleting physical file ${fileId}:`, error);
+            // Continue anyway - database record is already deleted
+          }
+        }
+
+        results.deleted.push({
+          id: deletedFile.id,
+          filename: deletedFile.originalName,
+        });
+      } catch (error) {
+        console.error(`Error processing file ${fileId}:`, error);
+        results.failed.push({
+          id: fileId,
+          error: error.message,
+        });
+      }
+    }
+
+    const totalDeleted = results.deleted.length;
+    const totalFailed =
+      results.failed.length +
+      results.notFound.length +
+      results.accessDenied.length;
+
+    res.json({
+      message: `Bulk delete completed: ${totalDeleted} deleted, ${totalFailed} failed`,
+      summary: {
+        requested: fileIds.length,
+        deleted: totalDeleted,
+        failed: totalFailed,
+      },
+      results,
+    });
+  } catch (error) {
+    console.error("Bulk delete error:", error);
+    res.status(500).json({
+      error: "Bulk delete failed",
+      message: "An error occurred during bulk deletion",
+    });
+  }
+});
+
 // GET /api/files/:fileId - Download file endpoint
 router.get("/files/:fileId", authenticateToken, (req, res) => {
   try {

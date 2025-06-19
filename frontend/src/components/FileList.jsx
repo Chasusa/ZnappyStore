@@ -9,6 +9,8 @@ const FileList = ({ refreshTrigger }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [downloadingFiles, setDownloadingFiles] = useState(new Set());
   const [deletingFiles, setDeletingFiles] = useState(new Set());
+  const [selectedFiles, setSelectedFiles] = useState(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [imageLoadingStates, setImageLoadingStates] = useState(new Map());
   const [imageErrorStates, setImageErrorStates] = useState(new Set());
   const { showNotification } = useNotification();
@@ -99,6 +101,12 @@ const FileList = ({ refreshTrigger }) => {
 
       // Remove the file from the local state
       setFiles((prevFiles) => prevFiles.filter((f) => f.id !== file.id));
+      // Remove from selected files if it was selected
+      setSelectedFiles((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(file.id);
+        return newSet;
+      });
 
       showNotification("success", `"${file.filename}" deleted successfully`);
     } catch (error) {
@@ -110,6 +118,88 @@ const FileList = ({ refreshTrigger }) => {
         newSet.delete(file.id);
         return newSet;
       });
+    }
+  };
+
+  const handleSelectFile = (fileId) => {
+    setSelectedFiles((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(fileId)) {
+        newSet.delete(fileId);
+      } else {
+        newSet.add(fileId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedFiles.size === files.length) {
+      setSelectedFiles(new Set());
+    } else {
+      setSelectedFiles(new Set(files.map((file) => file.id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    const selectedFilesList = files.filter((file) =>
+      selectedFiles.has(file.id),
+    );
+
+    if (selectedFilesList.length === 0) {
+      showNotification("warning", "No files selected for deletion");
+      return;
+    }
+
+    const fileNames = selectedFilesList.map((file) => file.filename);
+    const confirmMessage =
+      selectedFilesList.length === 1
+        ? `Are you sure you want to delete "${fileNames[0]}"?`
+        : `Are you sure you want to delete ${selectedFilesList.length} files?\n\n${fileNames.slice(0, 3).join(", ")}${fileNames.length > 3 ? `, and ${fileNames.length - 3} more...` : ""}`;
+
+    if (!window.confirm(`${confirmMessage}\n\nThis action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      setBulkDeleting(true);
+      const fileIds = selectedFilesList.map((file) => file.id);
+
+      const result = await fileAPI.bulkDeleteFiles(fileIds);
+
+      const successCount = result.summary.deleted;
+      const failCount = result.summary.failed;
+
+      // Remove successfully deleted files from local state
+      if (successCount > 0) {
+        const deletedIds = new Set(
+          result.results.deleted.map((file) => file.id),
+        );
+        setFiles((prevFiles) =>
+          prevFiles.filter((file) => !deletedIds.has(file.id)),
+        );
+        setSelectedFiles(new Set());
+      }
+
+      // Show notifications
+      if (successCount > 0 && failCount === 0) {
+        showNotification(
+          "success",
+          `${successCount} ${successCount === 1 ? "file" : "files"} deleted successfully`,
+        );
+      } else if (successCount > 0 && failCount > 0) {
+        showNotification(
+          "warning",
+          `${successCount} files deleted, ${failCount} failed`,
+        );
+      } else {
+        showNotification("error", "Failed to delete selected files");
+      }
+    } catch (error) {
+      console.error("Bulk delete error:", error);
+      showNotification("error", "An error occurred during bulk deletion");
+    } finally {
+      setBulkDeleting(false);
     }
   };
 
@@ -210,25 +300,74 @@ const FileList = ({ refreshTrigger }) => {
       <div className="file-list-header">
         <div className="file-count">
           {files.length} {files.length === 1 ? "file" : "files"}
+          {selectedFiles.size > 0 && (
+            <span className="selected-count">
+              ({selectedFiles.size} selected)
+            </span>
+          )}
         </div>
-        {refreshing && (
-          <div className="refresh-indicator">
-            <span>Updating...</span>
-          </div>
-        )}
-        <button
-          className="refresh-btn"
-          onClick={() => fetchFiles(true)}
-          disabled={loading || refreshing}
-        >
-          {refreshing ? "Updating..." : "🔄 Refresh"}
-        </button>
+        <div className="header-actions">
+          {files.length > 0 && (
+            <div className="bulk-actions">
+              <label className="select-all-checkbox">
+                <input
+                  type="checkbox"
+                  checked={
+                    selectedFiles.size === files.length && files.length > 0
+                  }
+                  onChange={handleSelectAll}
+                  disabled={loading || refreshing || bulkDeleting}
+                />
+                <span>Select All</span>
+              </label>
+              {selectedFiles.size > 0 && (
+                <button
+                  className="bulk-delete-btn"
+                  onClick={handleBulkDelete}
+                  disabled={bulkDeleting || selectedFiles.size === 0}
+                >
+                  {bulkDeleting ? (
+                    <>
+                      <span className="deleting-spinner">⏳</span>
+                      Deleting...
+                    </>
+                  ) : (
+                    <>🗑️ Delete Selected ({selectedFiles.size})</>
+                  )}
+                </button>
+              )}
+            </div>
+          )}
+          {refreshing && (
+            <div className="refresh-indicator">
+              <span>Updating...</span>
+            </div>
+          )}
+          <button
+            className="refresh-btn"
+            onClick={() => fetchFiles(true)}
+            disabled={loading || refreshing}
+          >
+            {refreshing ? "Updating..." : "🔄 Refresh"}
+          </button>
+        </div>
       </div>
 
       <div className="file-grid">
         {files.map((file) => (
-          <div key={file.id} className="file-card">
+          <div
+            key={file.id}
+            className={`file-card ${selectedFiles.has(file.id) ? "selected" : ""}`}
+          >
             <div className="file-card-header">
+              <label className="file-checkbox">
+                <input
+                  type="checkbox"
+                  checked={selectedFiles.has(file.id)}
+                  onChange={() => handleSelectFile(file.id)}
+                  disabled={bulkDeleting}
+                />
+              </label>
               {isImageFile(file.type) ? (
                 <div className="image-preview-container">
                   {imageLoadingStates.get(file.id) && (
@@ -289,7 +428,9 @@ const FileList = ({ refreshTrigger }) => {
                 className="download-file-btn"
                 onClick={() => handleDownload(file)}
                 disabled={
-                  downloadingFiles.has(file.id) || deletingFiles.has(file.id)
+                  downloadingFiles.has(file.id) ||
+                  deletingFiles.has(file.id) ||
+                  bulkDeleting
                 }
               >
                 {downloadingFiles.has(file.id) ? (
@@ -305,7 +446,9 @@ const FileList = ({ refreshTrigger }) => {
                 className="delete-file-btn"
                 onClick={() => handleDelete(file)}
                 disabled={
-                  downloadingFiles.has(file.id) || deletingFiles.has(file.id)
+                  downloadingFiles.has(file.id) ||
+                  deletingFiles.has(file.id) ||
+                  bulkDeleting
                 }
                 title={`Delete ${file.filename}`}
               >
