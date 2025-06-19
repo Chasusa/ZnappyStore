@@ -1,7 +1,9 @@
 .file-upload-container {
     max-width: 100%;
     margin: 0;
-    padding: 20px;
+    padding: 10px;
+    position: relative;
+    z-index: 1;
     font-family:
         "Inter",
         -apple-system,
@@ -18,12 +20,13 @@
     border: 2px dashed #e0e7ff;
     border-radius: 16px;
     background: linear-gradient(135deg, #f8faff 0%, #f1f5ff 100%);
-    padding: 60px 40px;
+    padding: 40px 30px;
     text-align: center;
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     overflow: hidden;
+    z-index: 2;
 }
 
 .upload-dropzone:hover {
@@ -163,17 +166,17 @@
 /* Responsive Design */
 @media (max-width: 1024px) {
     .file-upload-container {
-        padding: 16px;
+        padding: 8px;
     }
 }
 
 @media (max-width: 768px) {
     .file-upload-container {
-        padding: 16px;
+        padding: 8px;
     }
 
     .upload-dropzone {
-        padding: 40px 20px;
+        padding: 30px 15px;
     }
 
     .upload-content h4 {
@@ -196,7 +199,7 @@
 
 @media (max-width: 480px) {
     .upload-dropzone {
-        padding: 30px 16px;
+        padding: 25px 12px;
     }
 
     .upload-icon {

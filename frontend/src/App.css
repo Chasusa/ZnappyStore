@@ -5,9 +5,10 @@
 }
 
 .main-content {
-    min-height: calc(100vh - 80px); /* Adjust based on header height */
-    padding: 2rem 0;
+    min-height: calc(100vh - 80px);
+    padding: 1rem 0;
     margin-top: 80px; /* Account for fixed header */
+    background: #f9fafb;
 }
 
 .container {
@@ -196,7 +197,7 @@ button {
 
 @media (max-width: 640px) {
     .main-content {
-        padding: 1rem 0;
+        padding: 0.5rem 0;
         margin-top: 0; /* Reset margin for mobile since header is relative */
     }
 
