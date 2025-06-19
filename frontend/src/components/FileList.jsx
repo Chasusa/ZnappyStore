@@ -7,7 +7,6 @@ const FileList = ({ refreshTrigger }) => {
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [completed, setCompleted] = useState(false);
   const [downloadingFiles, setDownloadingFiles] = useState(new Set());
   const [deletingFiles, setDeletingFiles] = useState(new Set());
   const [imageLoadingStates, setImageLoadingStates] = useState(new Map());
@@ -15,25 +14,23 @@ const FileList = ({ refreshTrigger }) => {
   const { showNotification } = useNotification();
 
   const fetchFiles = useCallback(
-    async (showSuccessMessage = false) => {
+    async (isManualRefresh = false) => {
       try {
-        if (!refreshing) {
+        if (!isManualRefresh) {
           setLoading(true);
+        } else {
+          setRefreshing(true);
         }
+
         const response = await fileAPI.getFiles();
         const newFiles = response.files || [];
         setFiles(newFiles);
 
-        if (showSuccessMessage) {
+        if (isManualRefresh) {
           showNotification(
             "success",
             `Files refreshed - ${newFiles.length} files found`,
           );
-          setCompleted(true);
-          // Hide completed state after 2 seconds for manual refresh
-          setTimeout(() => {
-            setCompleted(false);
-          }, 2000);
         }
       } catch (error) {
         console.error("Error fetching files:", error);
@@ -43,31 +40,11 @@ const FileList = ({ refreshTrigger }) => {
         setRefreshing(false);
       }
     },
-    [refreshing, showNotification],
+    [showNotification],
   );
 
   useEffect(() => {
-    if (refreshTrigger === 0) {
-      // Initial load
-      fetchFiles();
-    } else {
-      // File was uploaded, show refresh indicator and delay slightly
-      setRefreshing(true);
-      setCompleted(false);
-      const refreshTimeout = setTimeout(() => {
-        fetchFiles().finally(() => {
-          setRefreshing(false);
-          setCompleted(true);
-
-          // Hide completed state after 2 seconds
-          setTimeout(() => {
-            setCompleted(false);
-          }, 2000);
-        });
-      }, 500);
-
-      return () => clearTimeout(refreshTimeout);
-    }
+    fetchFiles();
   }, [refreshTrigger, fetchFiles]);
 
   const handleDownload = async (file) => {
@@ -239,21 +216,12 @@ const FileList = ({ refreshTrigger }) => {
             <span>Updating...</span>
           </div>
         )}
-        {completed && (
-          <div className="completed-indicator">
-            <span>✅ Completed</span>
-          </div>
-        )}
         <button
-          className={`refresh-btn ${completed ? "completed" : ""}`}
+          className="refresh-btn"
           onClick={() => fetchFiles(true)}
-          disabled={loading || refreshing || completed}
+          disabled={loading || refreshing}
         >
-          {refreshing
-            ? "Updating..."
-            : completed
-              ? "✅ Completed"
-              : "🔄 Refresh"}
+          {refreshing ? "Updating..." : "🔄 Refresh"}
         </button>
       </div>
 

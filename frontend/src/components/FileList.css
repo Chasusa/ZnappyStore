@@ -58,17 +58,6 @@
     cursor: not-allowed;
 }
 
-.refresh-btn.completed {
-    background: #dcfce7;
-    color: #059669;
-    border-color: #bbf7d0;
-}
-
-.refresh-btn.completed:disabled {
-    opacity: 1;
-    cursor: default;
-}
-
 /* Refresh Indicator */
 .refresh-indicator {
     display: flex;
@@ -77,32 +66,6 @@
     font-size: 14px;
     color: #6366f1;
     font-weight: 500;
-}
-
-/* Completed Indicator */
-.completed-indicator {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 14px;
-    color: #059669;
-    font-weight: 500;
-    background: #dcfce7;
-    padding: 4px 8px;
-    border-radius: 4px;
-    opacity: 0;
-    animation: fadeInScale 0.3s ease-out forwards;
-}
-
-@keyframes fadeInScale {
-    from {
-        opacity: 0;
-        transform: scale(0.8);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
 }
 
 /* Loading State */
