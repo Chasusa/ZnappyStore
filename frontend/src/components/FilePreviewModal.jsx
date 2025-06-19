@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { fileAPI } from "../services/api";
 import { useNotification } from "../contexts/NotificationContext";
 import "./FilePreviewModal.css";
@@ -271,7 +272,7 @@ const FilePreviewModal = ({ file, isOpen, onClose }) => {
 
   if (!isOpen || !file) return null;
 
-  return (
+  return createPortal(
     <div className="modal-overlay" onClick={handleOverlayClick}>
       <div className="modal-container">
         <div className="modal-header">
@@ -310,7 +311,8 @@ const FilePreviewModal = ({ file, isOpen, onClose }) => {
 
         <div className="modal-content">{renderContent()}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };
 
