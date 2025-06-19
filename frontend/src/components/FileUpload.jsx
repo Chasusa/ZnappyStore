@@ -7,6 +7,9 @@ const FileUpload = ({ onUploadSuccess }) => {
   const [isDragActive, setIsDragActive] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [uploadQueue, setUploadQueue] = useState([]);
+  const [currentUploadIndex, setCurrentUploadIndex] = useState(0);
 
   const fileInputRef = useRef(null);
   const { showNotification } = useNotification();
@@ -86,8 +89,8 @@ const FileUpload = ({ onUploadSuccess }) => {
     setIsDragActive(false);
   }, []);
 
-  const handleFileUpload = useCallback(
-    async (file) => {
+  const handleSingleFileUpload = useCallback(
+    async (file, fileIndex = 0, totalFiles = 1) => {
       try {
         console.log("🚀 Starting file upload:", {
           name: file.name,
@@ -96,8 +99,6 @@ const FileUpload = ({ onUploadSuccess }) => {
         });
 
         validateFile(file);
-        setIsUploading(true);
-        setUploadProgress(0);
 
         console.log("📁 File validation passed, calling API...");
 
@@ -108,20 +109,19 @@ const FileUpload = ({ onUploadSuccess }) => {
 
         console.log("✅ Upload successful:", result);
 
-        showNotification(
-          "success",
-          `File "${file.name}" uploaded successfully! Your files list will update automatically.`,
-        );
-
-        // Reset form
-        if (fileInputRef.current) {
-          fileInputRef.current.value = "";
+        if (totalFiles === 1) {
+          showNotification(
+            "success",
+            `File "${file.name}" uploaded successfully!`,
+          );
         }
 
         // Notify parent component for automatic refresh
         if (onUploadSuccess) {
           onUploadSuccess(result.file);
         }
+
+        return { success: true, file: result.file };
       } catch (error) {
         console.error("❌ Upload error details:", {
           message: error.message,
@@ -150,35 +150,115 @@ const FileUpload = ({ onUploadSuccess }) => {
         } else if (error.message) {
           errorMessage = error.message;
         }
-        showNotification("error", errorMessage);
-      } finally {
-        setIsUploading(false);
-        setUploadProgress(0);
+
+        if (totalFiles === 1) {
+          showNotification("error", errorMessage);
+        }
+
+        return { success: false, error: errorMessage, fileName: file.name };
       }
     },
     [showNotification, onUploadSuccess, validateFile],
   );
 
-  const handleDrop = useCallback(
-    (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setIsDragActive(false);
+  const handleMultipleFileUpload = useCallback(
+    async (files) => {
+      setIsUploading(true);
+      setUploadProgress(0);
+      setCurrentUploadIndex(0);
 
-      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-        const file = e.dataTransfer.files[0];
-        handleFileUpload(file);
+      const results = {
+        successful: [],
+        failed: [],
+      };
+
+      for (let i = 0; i < files.length; i++) {
+        setCurrentUploadIndex(i + 1);
+        const file = files[i];
+
+        const result = await handleSingleFileUpload(file, i, files.length);
+
+        if (result.success) {
+          results.successful.push(result.file);
+        } else {
+          results.failed.push({ fileName: file.name, error: result.error });
+        }
+      }
+
+      // Show summary notification
+      const successCount = results.successful.length;
+      const failCount = results.failed.length;
+
+      if (successCount > 0 && failCount === 0) {
+        showNotification(
+          "success",
+          `All ${successCount} files uploaded successfully!`,
+        );
+      } else if (successCount > 0 && failCount > 0) {
+        showNotification(
+          "warning",
+          `${successCount} files uploaded successfully, ${failCount} failed.`,
+        );
+      } else {
+        showNotification("error", `All ${failCount} files failed to upload.`);
+      }
+
+      // Reset state
+      setIsUploading(false);
+      setUploadProgress(0);
+      setCurrentUploadIndex(0);
+      setSelectedFiles([]);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
       }
     },
-    [handleFileUpload],
+    [handleSingleFileUpload, showNotification],
   );
 
-  const handleFileSelect = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      handleFileUpload(file);
+  const handleDrop = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragActive(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const files = Array.from(e.dataTransfer.files);
+      setSelectedFiles(files);
     }
-  };
+  }, []);
+
+  const handleFileSelect = useCallback((event) => {
+    const files = Array.from(event.target.files);
+    if (files.length > 0) {
+      setSelectedFiles(files);
+    }
+  }, []);
+
+  const removeFile = useCallback((index) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const startUpload = useCallback(() => {
+    if (selectedFiles.length === 1) {
+      handleSingleFileUpload(selectedFiles[0]);
+    } else if (selectedFiles.length > 1) {
+      handleMultipleFileUpload(selectedFiles);
+    }
+  }, [selectedFiles, handleSingleFileUpload, handleMultipleFileUpload]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedFiles([]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }, []);
+
+  const formatFileSize = useCallback((bytes) => {
+    if (bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  }, []);
 
   const openFileDialog = () => {
     if (fileInputRef.current) {
@@ -204,13 +284,17 @@ const FileUpload = ({ onUploadSuccess }) => {
             accept=".jpg,.jpeg,.png,.gif,.svg,.txt,.md,.csv"
             className="file-input"
             disabled={isUploading}
+            multiple
           />
 
           <div className="upload-content">
             {isUploading ? (
               <>
                 <div className="upload-spinner">⏳</div>
-                <p>Uploading... {uploadProgress}%</p>
+                <p>
+                  Uploading file {currentUploadIndex} of {selectedFiles.length}
+                  ... {uploadProgress}%
+                </p>
                 <div className="progress-bar">
                   <div
                     className="progress-fill"
@@ -218,17 +302,42 @@ const FileUpload = ({ onUploadSuccess }) => {
                   ></div>
                 </div>
               </>
+            ) : selectedFiles.length > 0 ? (
+              <>
+                <div className="upload-icon">📁</div>
+                <h4>
+                  {selectedFiles.length} file
+                  {selectedFiles.length > 1 ? "s" : ""} selected
+                </h4>
+                <div className="selected-files-actions">
+                  <button
+                    className="upload-btn primary"
+                    type="button"
+                    onClick={startUpload}
+                  >
+                    Upload {selectedFiles.length} File
+                    {selectedFiles.length > 1 ? "s" : ""}
+                  </button>
+                  <button
+                    className="upload-btn secondary"
+                    type="button"
+                    onClick={clearSelection}
+                  >
+                    Clear Selection
+                  </button>
+                </div>
+              </>
             ) : (
               <>
                 <div className="upload-icon">📁</div>
-                <h4>Create or import a file</h4>
-                <p className="upload-subtitle">Maximum file size: 2MB</p>
+                <h4>Create or import files</h4>
+                <p className="upload-subtitle">Maximum file size: 2MB each</p>
                 <p className="upload-formats">
                   Supported formats: JPG, PNG, GIF, SVG, TXT, MD, CSV
                 </p>
                 <div className="upload-actions">
                   <button className="upload-btn primary" type="button">
-                    Choose File
+                    Choose Files
                   </button>
                   <p className="or-text">or drag and drop here</p>
                 </div>
@@ -236,6 +345,32 @@ const FileUpload = ({ onUploadSuccess }) => {
             )}
           </div>
         </div>
+
+        {selectedFiles.length > 0 && !isUploading && (
+          <div className="selected-files-list">
+            <h5>Selected Files ({selectedFiles.length}):</h5>
+            <div className="files-preview">
+              {selectedFiles.map((file, index) => (
+                <div key={index} className="file-preview-item">
+                  <div className="file-info">
+                    <span className="file-name">{file.name}</span>
+                    <span className="file-size">
+                      {formatFileSize(file.size)}
+                    </span>
+                  </div>
+                  <button
+                    className="remove-file-btn"
+                    onClick={() => removeFile(index)}
+                    type="button"
+                    title="Remove file"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

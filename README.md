@@ -154,7 +154,7 @@ ZnappyStore is designed to work seamlessly across all devices:
 The application features a comprehensive notification system:
 
 - **Error Notifications**: Red theme, 7-second duration
-- **Success Notifications**: Green theme, 5-second duration  
+- **Success Notifications**: Green theme, 5-second duration
 - **Warning Notifications**: Orange theme, 5-second duration
 - **Info Notifications**: Blue theme, 5-second duration
 
@@ -174,7 +174,7 @@ See [NOTIFICATIONS.md](frontend/NOTIFICATIONS.md) for detailed documentation.
 - Responsive login interface with notifications
 - Protected routes and access control
 
-**Phase 2**: Backend API System ✅ 
+**Phase 2**: Backend API System ✅
 - Express.js API server with all endpoints
 - File upload, list, and download functionality
 - Security features and validation
@@ -226,4 +226,4 @@ If you encounter any issues or have questions:
 
 ---
 
-**ZnappyStore** - Secure file storage made simple. 🚀 
+**ZnappyStore** - Secure file storage made simple. 🚀
