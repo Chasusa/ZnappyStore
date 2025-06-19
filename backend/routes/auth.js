@@ -2,6 +2,7 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { findUserByEmail } from '../utils/database.js';
+import { config } from '../config.js';
 
 const router = express.Router();
 
@@ -57,9 +58,9 @@ router.post('/login', async (req, res) => {
         userId: user.id,
         email: user.email 
       },
-      process.env.JWT_SECRET || 'fallback-secret',
+      config.jwt.secret,
       { 
-        expiresIn: process.env.JWT_EXPIRES_IN || '7d'
+        expiresIn: config.jwt.expiresIn
       }
     );
 
@@ -96,7 +97,7 @@ router.post('/validate', async (req, res) => {
     }
 
     // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
+    const decoded = jwt.verify(token, config.jwt.secret);
     const user = findUserByEmail(decoded.email);
     
     if (!user) {

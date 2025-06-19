@@ -19,7 +19,7 @@ export const AuthProvider = ({ children }) => {
 
   // Check for existing token on app load
   useEffect(() => {
-    const token = localStorage.getItem('snapvault_token');
+    const token = localStorage.getItem('token');
     if (token) {
       // Set axios default header
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
@@ -38,7 +38,7 @@ export const AuthProvider = ({ children }) => {
       const { token, user: userData } = await mockAuthService.login(email, password);
       
       // Store token
-      localStorage.setItem('snapvault_token', token);
+      localStorage.setItem('token', token);
       
       // Set axios default header
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
@@ -58,7 +58,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     // Remove token from storage
-    localStorage.removeItem('snapvault_token');
+    localStorage.removeItem('token');
     
     // Remove axios default header
     delete axios.defaults.headers.common['Authorization'];

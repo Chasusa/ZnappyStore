@@ -21,7 +21,7 @@ export const AuthProviderWithNotifications = ({ children }) => {
 
   // Check for existing token on app load
   useEffect(() => {
-    const token = localStorage.getItem('znappystore_token');
+    const token = localStorage.getItem('token');
     if (token) {
       // Set axios default header
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
@@ -40,7 +40,7 @@ export const AuthProviderWithNotifications = ({ children }) => {
       const { token, user: userData } = await mockAuthService.login(email, password);
       
       // Store token
-      localStorage.setItem('znappystore_token', token);
+      localStorage.setItem('token', token);
       
       // Set axios default header
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
@@ -83,7 +83,7 @@ export const AuthProviderWithNotifications = ({ children }) => {
 
   const logout = () => {
     // Remove token from storage
-    localStorage.removeItem('znappystore_token');
+    localStorage.removeItem('token');
     
     // Remove axios default header
     delete axios.defaults.headers.common['Authorization'];

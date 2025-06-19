@@ -9,7 +9,9 @@ import {
   generateSafeFilename, 
   formatFileSize, 
   getFileCategory,
-  MAX_FILE_SIZE 
+  MAX_FILE_SIZE,
+  isValidMimeType,
+  isValidExtension
 } from '../utils/fileValidation.js';
 import { 
   createFile, 
@@ -41,11 +43,13 @@ const upload = multer({
     files: 1
   },
   fileFilter: (req, file, cb) => {
-    const validation = validateFile(file);
-    if (validation.isValid) {
+    // Only check MIME type and extension here
+    const isMimeTypeValid = isValidMimeType(file.mimetype);
+    const isExtensionValid = isValidExtension(file.originalname);
+    if (isMimeTypeValid && isExtensionValid) {
       cb(null, true);
     } else {
-      cb(new Error(validation.errors.join(', ')), false);
+      cb(new Error('File type or extension not supported'), false);
     }
   }
 });

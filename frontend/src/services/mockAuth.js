@@ -1,82 +1,59 @@
-// Mock authentication service for development
-// Replace this with actual API calls when backend is ready
+// Authentication service now connected to SQLite backend
+// No longer mock - this uses the real API
 
-const MOCK_USERS = [
-  {
-    id: 1,
-    email: 'demo@znappystore.com',
-    password: 'demo123',
-    name: 'Demo User'
-  },
-  {
-    id: 2,
-    email: 'test@example.com',
-    password: 'test123',
-    name: 'Test User'
-  }
-];
-
-// Simulate API delay
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+import { authAPI } from './api';
 
 export const mockAuthService = {
   async login(email, password) {
-    // Simulate API delay
-    await delay(1000);
-    
-    // Simulate different error scenarios for testing
-    if (email === 'network@error.com') {
-      throw new Error('Network error occurred while connecting to server');
-    }
-    
-    if (email === 'server@error.com') {
-      throw new Error('Server is temporarily unavailable. Please try again later.');
-    }
-    
-    // Find user
-    const user = MOCK_USERS.find(u => u.email === email && u.password === password);
-    
-    if (!user) {
-      throw new Error('Invalid email or password');
-    }
-    
-    // Generate mock token
-    const token = `mock_token_${user.id}_${Date.now()}`;
-    
-    return {
-      token,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name
+    try {
+      const response = await authAPI.login({ email, password });
+      return {
+        token: response.token,
+        user: response.user
+      };
+    } catch (error) {
+      // Handle different error types with user-friendly messages
+      if (error.response?.status === 401) {
+        throw new Error('Invalid email or password');
+      } else if (error.response?.status >= 500) {
+        throw new Error('Server is temporarily unavailable. Please try again later.');
+      } else if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {
+        throw new Error('Cannot connect to server. Please check if the backend is running on port 3001.');
+      } else if (error.response?.status === 400) {
+        throw new Error(error.response?.data?.message || 'Invalid request. Please check your input.');
+      } else {
+        throw new Error(error.response?.data?.message || 'Login failed. Please try again.');
       }
-    };
+    }
   },
   
   async validateToken(token) {
-    // Simulate API delay
-    await delay(500);
-    
-    // For mock purposes, just check if token exists and has correct format
-    if (!token || !token.startsWith('mock_token_')) {
-      throw new Error('Invalid token');
+    if (!token) {
+      throw new Error('No authentication token found');
     }
     
-    // Extract user ID from token (mock implementation)
-    const parts = token.split('_');
-    const userId = parseInt(parts[2]);
-    
-    const user = MOCK_USERS.find(u => u.id === userId);
-    if (!user) {
-      throw new Error('User not found');
-    }
-    
-    return {
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name
+    try {
+      // For JWT tokens, we can decode the payload to get user info
+      // This is safe since JWT payload is not encrypted, just encoded
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      
+      // Check if token is expired
+      if (payload.exp && payload.exp < Date.now() / 1000) {
+        throw new Error('Token has expired');
       }
-    };
+      
+      return {
+        user: {
+          id: payload.userId,
+          email: payload.email,
+          name: payload.name || 'User' // Fallback if name not in token
+        }
+      };
+    } catch (error) {
+      if (error.message === 'Token has expired') {
+        throw error;
+      }
+      throw new Error('Invalid authentication token');
+    }
   }
 }; 

@@ -29,6 +29,19 @@
   line-height: 1.6;
 }
 
+/* App sections layout */
+.app-sections {
+  margin-top: 40px;
+}
+
+.upload-section {
+  margin-bottom: 60px;
+}
+
+.files-section {
+  margin-bottom: 40px;
+}
+
 /* Global styles */
 * {
   box-sizing: border-box;
