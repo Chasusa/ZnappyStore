@@ -1,60 +1,101 @@
-import React, { useState, useEffect } from 'react';
-import { fileAPI } from '../services/api';
-import { useNotification } from '../contexts/NotificationContext';
-import './FileList.css';
+import React, { useState, useEffect, useCallback } from "react";
+import { fileAPI } from "../services/api";
+import { useNotification } from "../contexts/NotificationContext";
+import "./FileList.css";
 
 const FileList = ({ refreshTrigger }) => {
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [completed, setCompleted] = useState(false);
   const [downloadingFiles, setDownloadingFiles] = useState(new Set());
   const { showNotification } = useNotification();
 
-  useEffect(() => {
-    fetchFiles();
-  }, [refreshTrigger]);
+  const fetchFiles = useCallback(
+    async (showSuccessMessage = false) => {
+      try {
+        if (!refreshing) {
+          setLoading(true);
+        }
+        const response = await fileAPI.getFiles();
+        const newFiles = response.files || [];
+        setFiles(newFiles);
 
-  const fetchFiles = async () => {
-    try {
-      setLoading(true);
-      const response = await fileAPI.getFiles();
-      setFiles(response.files || []);
-    } catch (error) {
-      console.error('Error fetching files:', error);
-      showNotification('error', 'Failed to load files');
-    } finally {
-      setLoading(false);
+        if (showSuccessMessage) {
+          showNotification(
+            "success",
+            `Files refreshed - ${newFiles.length} files found`,
+          );
+          setCompleted(true);
+          // Hide completed state after 2 seconds for manual refresh
+          setTimeout(() => {
+            setCompleted(false);
+          }, 2000);
+        }
+      } catch (error) {
+        console.error("Error fetching files:", error);
+        showNotification("error", "Failed to load files");
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [refreshing, showNotification],
+  );
+
+  useEffect(() => {
+    if (refreshTrigger === 0) {
+      // Initial load
+      fetchFiles();
+    } else {
+      // File was uploaded, show refresh indicator and delay slightly
+      setRefreshing(true);
+      setCompleted(false);
+      const refreshTimeout = setTimeout(() => {
+        fetchFiles().finally(() => {
+          setRefreshing(false);
+          setCompleted(true);
+
+          // Hide completed state after 2 seconds
+          setTimeout(() => {
+            setCompleted(false);
+          }, 2000);
+        });
+      }, 500);
+
+      return () => clearTimeout(refreshTimeout);
     }
-  };
+  }, [refreshTrigger, fetchFiles]);
 
   const handleDownload = async (file) => {
     try {
-      setDownloadingFiles(prev => new Set([...prev, file.id]));
-      
+      setDownloadingFiles((prev) => new Set([...prev, file.id]));
+
       const response = await fileAPI.downloadFile(file.id);
-      
+
       // Create blob from response
       const blob = new Blob([response.data], { type: file.type });
-      
+
       // Create download link
       const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = url;
       link.download = file.filename;
-      
+
       // Trigger download
       document.body.appendChild(link);
       link.click();
-      
+
       // Cleanup
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      
-      showNotification('success', `Downloaded "${file.filename}"`);
+
+      showNotification("success", `Downloaded "${file.filename}"`);
     } catch (error) {
-      console.error('Download error:', error);
-      showNotification('error', `Failed to download "${file.filename}"`);
+      console.error("Download error:", error);
+      showNotification("error", `Failed to download "${file.filename}"`);
     } finally {
-      setDownloadingFiles(prev => {
+      setDownloadingFiles((prev) => {
         const newSet = new Set(prev);
         newSet.delete(file.id);
         return newSet;
@@ -64,31 +105,31 @@ const FileList = ({ refreshTrigger }) => {
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
-  const getFileIcon = (type, category) => {
-    if (type.startsWith('image/')) return '🖼️';
-    if (type === 'text/plain') return '📄';
-    if (type === 'text/markdown') return '📝';
-    if (type === 'text/csv') return '📊';
-    return '📄';
+  const getFileIcon = (type) => {
+    if (type.startsWith("image/")) return "🖼️";
+    if (type === "text/plain") return "📄";
+    if (type === "text/markdown") return "📝";
+    if (type === "text/csv") return "📊";
+    return "📄";
   };
 
   const getCategoryBadge = (category) => {
     const badges = {
-      image: { emoji: '🎨', label: 'Image', color: '#f59e0b' },
-      document: { emoji: '📄', label: 'Document', color: '#3b82f6' },
-      data: { emoji: '📊', label: 'Data', color: '#10b981' },
-      other: { emoji: '📁', label: 'File', color: '#6b7280' }
+      image: { emoji: "🎨", label: "Image", color: "#f59e0b" },
+      document: { emoji: "📄", label: "Document", color: "#3b82f6" },
+      data: { emoji: "📊", label: "Data", color: "#10b981" },
+      other: { emoji: "📁", label: "File", color: "#6b7280" },
     };
-    
+
     return badges[category] || badges.other;
   };
 
@@ -118,9 +159,29 @@ const FileList = ({ refreshTrigger }) => {
   return (
     <div className="file-list-container">
       <div className="file-list-header">
-        <h3>📁 Your Files ({files.length})</h3>
-        <button className="refresh-btn" onClick={fetchFiles} disabled={loading}>
-          🔄 Refresh
+        <div className="file-count">
+          {files.length} {files.length === 1 ? "file" : "files"}
+        </div>
+        {refreshing && (
+          <div className="refresh-indicator">
+            <span>Updating...</span>
+          </div>
+        )}
+        {completed && (
+          <div className="completed-indicator">
+            <span>✅ Completed</span>
+          </div>
+        )}
+        <button
+          className={`refresh-btn ${completed ? "completed" : ""}`}
+          onClick={() => fetchFiles(true)}
+          disabled={loading || refreshing || completed}
+        >
+          {refreshing
+            ? "Updating..."
+            : completed
+              ? "✅ Completed"
+              : "🔄 Refresh"}
         </button>
       </div>
 
@@ -128,14 +189,16 @@ const FileList = ({ refreshTrigger }) => {
         {files.map((file) => (
           <div key={file.id} className="file-card">
             <div className="file-card-header">
-              <div className="file-icon-large">
-                {getFileIcon(file.type, file.category)}
-              </div>
-              <div className="file-category-badge" style={{
-                backgroundColor: `${getCategoryBadge(file.category).color}15`,
-                color: getCategoryBadge(file.category).color
-              }}>
-                {getCategoryBadge(file.category).emoji} {getCategoryBadge(file.category).label}
+              <div className="file-icon-large">{getFileIcon(file.type)}</div>
+              <div
+                className="file-category-badge"
+                style={{
+                  backgroundColor: `${getCategoryBadge(file.category).color}15`,
+                  color: getCategoryBadge(file.category).color,
+                }}
+              >
+                {getCategoryBadge(file.category).emoji}{" "}
+                {getCategoryBadge(file.category).label}
               </div>
             </div>
 
@@ -162,9 +225,7 @@ const FileList = ({ refreshTrigger }) => {
                     Downloading...
                   </>
                 ) : (
-                  <>
-                    ⬇️ Download
-                  </>
+                  <>⬇️ Download</>
                 )}
               </button>
             </div>
@@ -175,4 +236,4 @@ const FileList = ({ refreshTrigger }) => {
   );
 };
 
-export default FileList; 
+export default FileList;
