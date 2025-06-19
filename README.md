@@ -23,20 +23,35 @@ A secure file storage and management application that provides authenticated use
   - Smooth animations and transitions
   - Mobile-first approach with desktop enhancements
 
-### 🚧 Planned Features
-- **📤 File Upload** - Support for JPG, PNG, GIF, SVG, TXT, MD, CSV files (max 2MB)
-- **📋 File Management** - List, view, and organize uploaded files
-- **⬇️ File Download** - Secure file retrieval with ownership validation
-- **🖼️ File Previews** - Image and text file preview functionality
+### ✅ Backend API (NEW!)
+- **🔐 JWT Authentication** - Secure token-based authentication
+- **📤 File Upload API** - Support for JPG, PNG, GIF, SVG, TXT, MD, CSV files (max 2MB)
+- **📋 File Management API** - List and retrieve user files with ownership validation
+- **⬇️ Secure Download API** - File download with strict access control
+
+### 🚧 Frontend Integration (Next)
+- **📤 File Upload UI** - Drag & drop file upload interface
+- **📋 File List View** - Display uploaded files with details
+- **⬇️ Download Interface** - File download and preview functionality
+- **🖼️ File Previews** - Image and text file preview capabilities
 
 ## 🛠️ Tech Stack
 
-- **Frontend**: React 19 + Vite
+**Frontend:**
+- **Framework**: React 19 + Vite
 - **Styling**: CSS3 with custom components
 - **HTTP Client**: Axios
 - **Routing**: React Router DOM
-- **Authentication**: JWT-style token management
+- **State Management**: React Context
 - **Notifications**: Custom toast notification system
+
+**Backend:**
+- **Runtime**: Node.js with ES modules
+- **Framework**: Express.js
+- **Authentication**: JWT (jsonwebtoken)
+- **File Upload**: Multer
+- **Security**: Helmet, CORS, bcryptjs
+- **Storage**: File system (uploads directory)
 
 ## 📦 Project Structure
 
@@ -59,6 +74,18 @@ ZnappyStore/
 │   │   └── main.jsx                  # Application entry point
 │   ├── NOTIFICATIONS.md              # Notification system documentation
 │   └── package.json                  # Frontend dependencies
+├── backend/                           # Express.js API server
+│   ├── routes/
+│   │   ├── auth.js                   # Authentication endpoints
+│   │   └── files.js                  # File management endpoints
+│   ├── middleware/
+│   │   └── auth.js                   # JWT authentication middleware
+│   ├── utils/
+│   │   ├── database.js               # Mock database
+│   │   └── fileValidation.js         # File validation utilities
+│   ├── server.js                     # Main server file
+│   ├── config.js                     # Configuration
+│   └── package.json                  # Backend dependencies
 └── README.md                         # This file
 ```
 
@@ -76,18 +103,31 @@ ZnappyStore/
    cd ZnappyStore
    ```
 
-2. **Install frontend dependencies**
+2. **Install backend dependencies**
+   ```bash
+   cd backend
+   npm install
+   ```
+
+3. **Start the backend server**
+   ```bash
+   npm run dev
+   # Server runs on http://localhost:3001
+   ```
+
+4. **Install frontend dependencies (new terminal)**
    ```bash
    cd frontend
    npm install
    ```
 
-3. **Start the development server**
+5. **Start the frontend development server**
    ```bash
    npm run dev
+   # Frontend runs on http://localhost:5173
    ```
 
-4. **Open your browser**
+6. **Open your browser**
    Navigate to `http://localhost:5173`
 
 ## 🔑 Demo Credentials
@@ -129,20 +169,41 @@ See [NOTIFICATIONS.md](frontend/NOTIFICATIONS.md) for detailed documentation.
 
 ## 🚧 Development Status
 
-**Current Phase**: Authentication & UI Foundation ✅
+**Phase 1**: Authentication & UI Foundation ✅
+- Complete authentication system with JWT
+- Responsive login interface with notifications
+- Protected routes and access control
 
-**Next Phase**: File Management System
-- Backend API development
-- File upload functionality
-- File listing and management
-- Download and preview features
+**Phase 2**: Backend API System ✅ 
+- Express.js API server with all endpoints
+- File upload, list, and download functionality
+- Security features and validation
+- Complete API documentation
 
-## 📄 API Endpoints (Planned)
+**Phase 3**: Frontend Integration (Current)
+- Connect frontend to real API endpoints
+- File upload UI with drag & drop
+- File management interface
+- Download and preview functionality
 
-- `POST /api/auth/login` - User authentication
-- `POST /api/upload` - File upload (JPG, PNG, GIF, SVG, TXT, MD, CSV)
-- `GET /api/files` - List user's files
-- `GET /api/files/:file_id` - Download specific file
+## 📄 API Endpoints
+
+### ✅ Implemented
+- `POST /api/auth/login` - User authentication with JWT
+- `POST /api/upload` - File upload (JPG, PNG, GIF, SVG, TXT, MD, CSV, max 2MB)
+- `GET /api/files` - List authenticated user's files
+- `GET /api/files/:fileId` - Download specific file (with ownership check)
+- `GET /api/files/:fileId/info` - Get file information
+- `GET /api/health` - API health check
+
+### Backend Server
+The API server runs on `http://localhost:3001` and provides:
+- **Full authentication system** with JWT tokens
+- **Complete file management** with upload, list, download
+- **Security features** including CORS, Helmet, file validation
+- **Error handling** with consistent response format
+
+See [backend/README.md](backend/README.md) for detailed API documentation.
 
 ## 🤝 Contributing
 
