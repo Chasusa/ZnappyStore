@@ -9,6 +9,8 @@ const FileList = ({ refreshTrigger }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [downloadingFiles, setDownloadingFiles] = useState(new Set());
+  const [imageLoadingStates, setImageLoadingStates] = useState(new Map());
+  const [imageErrorStates, setImageErrorStates] = useState(new Set());
   const { showNotification } = useNotification();
 
   const fetchFiles = useCallback(
@@ -122,6 +124,45 @@ const FileList = ({ refreshTrigger }) => {
     return "📄";
   };
 
+  const getImagePreviewUrl = (fileId) => {
+    const token = localStorage.getItem("token");
+    return `http://localhost:3001/api/files/${fileId}/preview?token=${token}`;
+  };
+
+  const isImageFile = (type) => {
+    return type.startsWith("image/");
+  };
+
+  const handleImageLoad = (fileId) => {
+    setImageLoadingStates((prev) => {
+      const newMap = new Map(prev);
+      newMap.delete(fileId);
+      return newMap;
+    });
+  };
+
+  const handleImageError = (fileId) => {
+    setImageLoadingStates((prev) => {
+      const newMap = new Map(prev);
+      newMap.delete(fileId);
+      return newMap;
+    });
+    setImageErrorStates((prev) => new Set([...prev, fileId]));
+  };
+
+  const handleImageLoadStart = (fileId) => {
+    setImageLoadingStates((prev) => {
+      const newMap = new Map(prev);
+      newMap.set(fileId, true);
+      return newMap;
+    });
+    setImageErrorStates((prev) => {
+      const newSet = new Set(prev);
+      newSet.delete(fileId);
+      return newSet;
+    });
+  };
+
   const getCategoryBadge = (category) => {
     const badges = {
       image: { emoji: "🎨", label: "Image", color: "#f59e0b" },
@@ -189,7 +230,38 @@ const FileList = ({ refreshTrigger }) => {
         {files.map((file) => (
           <div key={file.id} className="file-card">
             <div className="file-card-header">
-              <div className="file-icon-large">{getFileIcon(file.type)}</div>
+              {isImageFile(file.type) ? (
+                <div className="image-preview-container">
+                  {imageLoadingStates.get(file.id) && (
+                    <div className="image-loading">
+                      <div className="loading-spinner">⏳</div>
+                    </div>
+                  )}
+                  {!imageErrorStates.has(file.id) && (
+                    <img
+                      src={getImagePreviewUrl(file.id)}
+                      alt={file.filename}
+                      className="image-preview"
+                      title={file.filename}
+                      onLoadStart={() => handleImageLoadStart(file.id)}
+                      onLoad={() => handleImageLoad(file.id)}
+                      onError={() => handleImageError(file.id)}
+                      style={{
+                        display: imageLoadingStates.get(file.id)
+                          ? "none"
+                          : "block",
+                      }}
+                    />
+                  )}
+                  {imageErrorStates.has(file.id) && (
+                    <div className="file-icon-large fallback-icon">
+                      {getFileIcon(file.type)}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="file-icon-large">{getFileIcon(file.type)}</div>
+              )}
               <div
                 className="file-category-badge"
                 style={{

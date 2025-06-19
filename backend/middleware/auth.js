@@ -1,27 +1,32 @@
-import jwt from 'jsonwebtoken';
-import { findUserById } from '../utils/database.js';
-import { config } from '../config.js';
+import jwt from "jsonwebtoken";
+import { findUserById } from "../utils/database.js";
+import { config } from "../config.js";
 
 export const authenticateToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+  const authHeader = req.headers["authorization"];
+  let token = authHeader && authHeader.split(" ")[1]; // Bearer TOKEN
+
+  // Also check for token in query parameter (for image previews)
+  if (!token && req.query.token) {
+    token = req.query.token;
+  }
 
   if (!token) {
     return res.status(401).json({
-      error: 'Access denied',
-      message: 'No token provided'
+      error: "Access denied",
+      message: "No token provided",
     });
   }
 
   try {
     const decoded = jwt.verify(token, config.jwt.secret);
-    
+
     // Find user in database
     const user = findUserById(decoded.userId);
     if (!user) {
       return res.status(401).json({
-        error: 'Invalid token',
-        message: 'User not found'
+        error: "Invalid token",
+        message: "User not found",
       });
     }
 
@@ -29,22 +34,22 @@ export const authenticateToken = (req, res, next) => {
     req.user = {
       id: user.id,
       email: user.email,
-      name: user.name
+      name: user.name,
     };
-    
+
     next();
   } catch (error) {
-    console.error('Token verification error:', error);
+    console.error("Token verification error:", error);
     return res.status(403).json({
-      error: 'Invalid token',
-      message: 'Token verification failed'
+      error: "Invalid token",
+      message: "Token verification failed",
     });
   }
 };
 
 export const optionalAuth = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
 
   if (!token) {
     req.user = null;
@@ -54,15 +59,17 @@ export const optionalAuth = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, config.jwt.secret);
     const user = findUserById(decoded.userId);
-    
-    req.user = user ? {
-      id: user.id,
-      email: user.email,
-      name: user.name
-    } : null;
+
+    req.user = user
+      ? {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+        }
+      : null;
   } catch (error) {
     req.user = null;
   }
-  
+
   next();
-}; 
+};

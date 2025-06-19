@@ -21,7 +21,9 @@ const FileUpload = ({ onUploadSuccess }) => {
       "image/svg+xml": ".svg",
       "text/plain": ".txt",
       "text/markdown": ".md",
+      "application/octet-stream": ".md",
       "text/csv": ".csv",
+      "application/csv": ".csv",
     }),
     [],
   );
@@ -37,8 +39,23 @@ const FileUpload = ({ onUploadSuccess }) => {
         );
       }
 
-      // Check file type
-      if (!supportedTypes[file.type]) {
+      // Check file type - be more flexible with common file types
+      const fileExtension = file.name.toLowerCase().split(".").pop();
+      const isValidType =
+        supportedTypes[file.type] ||
+        (fileExtension === "md" &&
+          (file.type === "text/plain" ||
+            file.type === "text/markdown" ||
+            file.type === "application/octet-stream" ||
+            file.type === "")) ||
+        (fileExtension === "txt" &&
+          (file.type === "text/plain" || file.type === "")) ||
+        (fileExtension === "csv" &&
+          (file.type === "text/csv" ||
+            file.type === "application/csv" ||
+            file.type === "text/plain"));
+
+      if (!isValidType) {
         const supportedExtensions = Object.values(supportedTypes).join(", ");
         throw new Error(
           `File type not supported. Supported formats: ${supportedExtensions}`,
@@ -184,7 +201,7 @@ const FileUpload = ({ onUploadSuccess }) => {
             ref={fileInputRef}
             type="file"
             onChange={handleFileSelect}
-            accept={Object.keys(supportedTypes).join(",")}
+            accept=".jpg,.jpeg,.png,.gif,.svg,.txt,.md,.csv"
             className="file-input"
             disabled={isUploading}
           />
