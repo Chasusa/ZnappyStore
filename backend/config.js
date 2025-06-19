@@ -16,6 +16,10 @@ export const config = {
   upload: {
     maxFileSize: parseInt(process.env.MAX_FILE_SIZE) || 2097152, // 2MB
     uploadDir: process.env.UPLOAD_DIR || 'uploads'
+  },
+  database: {
+    filename: process.env.DB_FILE || 'znappystore.db',
+    backup: process.env.DB_BACKUP || true
   }
 };
 

@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
-import { users } from '../utils/database.js';
+import { findUserById } from '../utils/database.js';
+import { config } from '../config.js';
 
 export const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -13,10 +14,10 @@ export const authenticateToken = (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
+    const decoded = jwt.verify(token, config.jwt.secret);
     
-    // Find user in our mock database
-    const user = users.find(u => u.id === decoded.userId);
+    // Find user in database
+    const user = findUserById(decoded.userId);
     if (!user) {
       return res.status(401).json({
         error: 'Invalid token',
@@ -51,8 +52,8 @@ export const optionalAuth = (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
-    const user = users.find(u => u.id === decoded.userId);
+    const decoded = jwt.verify(token, config.jwt.secret);
+    const user = findUserById(decoded.userId);
     
     req.user = user ? {
       id: user.id,

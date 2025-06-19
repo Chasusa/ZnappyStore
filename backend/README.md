@@ -19,7 +19,7 @@ Backend API server for ZnappyStore - A secure file storage and management applic
 - **File Upload**: Multer
 - **Security**: Helmet, CORS, bcryptjs
 - **Storage**: File system (uploads directory)
-- **Database**: In-memory mock database
+- **Database**: SQLite with better-sqlite3
 
 ## 📋 API Endpoints
 
@@ -263,9 +263,64 @@ Common HTTP status codes:
 - `413` - Payload Too Large (file too big)
 - `500` - Internal Server Error
 
+## 🗄️ Database
+
+ZnappyStore uses SQLite as its database, providing:
+
+- **Lightweight**: No server setup required
+- **ACID Compliance**: Reliable transactions
+- **Zero Configuration**: Works out of the box
+- **Better Performance**: Using better-sqlite3 for optimal speed
+- **Easy Backup**: Single file database
+
+### Database Schema
+
+**Users Table:**
+```sql
+CREATE TABLE users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT UNIQUE NOT NULL,
+  password TEXT NOT NULL,
+  name TEXT NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+**Files Table:**
+```sql
+CREATE TABLE files (
+  id TEXT PRIMARY KEY,
+  filename TEXT NOT NULL,
+  original_name TEXT NOT NULL,
+  mime_type TEXT NOT NULL,
+  size INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  file_path TEXT NOT NULL,
+  upload_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+);
+```
+
+### Database Utilities
+
+Inspect the database using the SQLite CLI:
+```bash
+# List tables
+sqlite3 znappystore.db ".tables"
+
+# View users
+sqlite3 znappystore.db "SELECT * FROM users;"
+
+# View files
+sqlite3 znappystore.db "SELECT * FROM files;"
+
+# Database schema
+sqlite3 znappystore.db ".schema"
+```
+
 ## 🔄 Future Enhancements
 
-- Database integration (PostgreSQL/MongoDB)
+- PostgreSQL/MongoDB migration options
 - File versioning
 - Bulk file operations
 - File sharing capabilities

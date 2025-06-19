@@ -81,7 +81,7 @@ ZnappyStore/
 │   ├── middleware/
 │   │   └── auth.js                   # JWT authentication middleware
 │   ├── utils/
-│   │   ├── database.js               # Mock database
+│   │   ├── database.js               # SQLite database with better-sqlite3
 │   │   └── fileValidation.js         # File validation utilities
 │   ├── server.js                     # Main server file
 │   ├── config.js                     # Configuration
