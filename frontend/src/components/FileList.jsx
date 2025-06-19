@@ -9,6 +9,7 @@ const FileList = ({ refreshTrigger }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [downloadingFiles, setDownloadingFiles] = useState(new Set());
+  const [deletingFiles, setDeletingFiles] = useState(new Set());
   const [imageLoadingStates, setImageLoadingStates] = useState(new Map());
   const [imageErrorStates, setImageErrorStates] = useState(new Set());
   const { showNotification } = useNotification();
@@ -98,6 +99,36 @@ const FileList = ({ refreshTrigger }) => {
       showNotification("error", `Failed to download "${file.filename}"`);
     } finally {
       setDownloadingFiles((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(file.id);
+        return newSet;
+      });
+    }
+  };
+
+  const handleDelete = async (file) => {
+    if (
+      !window.confirm(
+        `Are you sure you want to delete "${file.filename}"? This action cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setDeletingFiles((prev) => new Set([...prev, file.id]));
+
+      await fileAPI.deleteFile(file.id);
+
+      // Remove the file from the local state
+      setFiles((prevFiles) => prevFiles.filter((f) => f.id !== file.id));
+
+      showNotification("success", `"${file.filename}" deleted successfully`);
+    } catch (error) {
+      console.error("Delete error:", error);
+      showNotification("error", `Failed to delete "${file.filename}"`);
+    } finally {
+      setDeletingFiles((prev) => {
         const newSet = new Set(prev);
         newSet.delete(file.id);
         return newSet;
@@ -289,7 +320,9 @@ const FileList = ({ refreshTrigger }) => {
               <button
                 className="download-file-btn"
                 onClick={() => handleDownload(file)}
-                disabled={downloadingFiles.has(file.id)}
+                disabled={
+                  downloadingFiles.has(file.id) || deletingFiles.has(file.id)
+                }
               >
                 {downloadingFiles.has(file.id) ? (
                   <>
@@ -298,6 +331,23 @@ const FileList = ({ refreshTrigger }) => {
                   </>
                 ) : (
                   <>⬇️ Download</>
+                )}
+              </button>
+              <button
+                className="delete-file-btn"
+                onClick={() => handleDelete(file)}
+                disabled={
+                  downloadingFiles.has(file.id) || deletingFiles.has(file.id)
+                }
+                title={`Delete ${file.filename}`}
+              >
+                {deletingFiles.has(file.id) ? (
+                  <>
+                    <span className="deleting-spinner">⏳</span>
+                    Deleting...
+                  </>
+                ) : (
+                  <>🗑️ Delete</>
                 )}
               </button>
             </div>

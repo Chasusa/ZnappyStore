@@ -17,6 +17,7 @@ import {
   createFile,
   findFilesByUserId,
   findFileById,
+  deleteFileById,
 } from "../utils/database.js";
 
 const router = express.Router();
@@ -292,6 +293,63 @@ router.get("/files/:fileId/info", authenticateToken, (req, res) => {
     res.status(500).json({
       error: "Failed to retrieve file information",
       message: "An error occurred while retrieving file information",
+    });
+  }
+});
+
+// DELETE /api/files/:fileId - Delete file endpoint
+router.delete("/files/:fileId", authenticateToken, (req, res) => {
+  try {
+    const { fileId } = req.params;
+
+    // Find file in database
+    const file = findFileById(fileId);
+    if (!file) {
+      return res.status(404).json({
+        error: "File not found",
+        message: "The requested file does not exist",
+      });
+    }
+
+    // Check ownership - users can only delete their own files
+    if (file.userId !== req.user.id) {
+      return res.status(403).json({
+        error: "Access denied",
+        message: "You do not have permission to delete this file",
+      });
+    }
+
+    // Delete file from database
+    const deletedFile = deleteFileById(fileId);
+    if (!deletedFile) {
+      return res.status(500).json({
+        error: "Delete failed",
+        message: "Failed to delete file from database",
+      });
+    }
+
+    // Delete physical file from disk
+    if (fs.existsSync(file.path)) {
+      try {
+        fs.unlinkSync(file.path);
+      } catch (error) {
+        console.error("Error deleting physical file:", error);
+        // Continue anyway - database record is already deleted
+      }
+    }
+
+    res.json({
+      message: "File deleted successfully",
+      file: {
+        id: deletedFile.id,
+        filename: deletedFile.originalName,
+      },
+    });
+  } catch (error) {
+    console.error("Delete error:", error);
+    res.status(500).json({
+      error: "Delete failed",
+      message: "An error occurred while deleting the file",
     });
   }
 });
