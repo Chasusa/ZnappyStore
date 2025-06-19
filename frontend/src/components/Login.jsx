@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthWithNotifications';
-import './Login.css';
+import React, { useState, useEffect } from "react";
+import { useAuth } from "../contexts/AuthWithNotifications";
+import "./Login.css";
 
 const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { login, clearError, loading } = useAuth();
 
@@ -15,7 +15,7 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!email || !password) {
       return;
     }
@@ -26,7 +26,7 @@ const Login = () => {
 
     if (result.success) {
       // AuthContext will handle navigation after successful login
-      console.log('Login successful');
+      console.log("Login successful");
     }
   };
 
@@ -76,19 +76,25 @@ const Login = () => {
             className="login-button"
             disabled={!isFormValid || isSubmitting || loading}
           >
-            {isSubmitting ? 'Signing in...' : 'Sign In'}
+            {isSubmitting ? "Signing in..." : "Sign In"}
           </button>
         </form>
 
         <div className="login-footer">
           <p>Demo credentials for testing:</p>
-          <p><strong>Valid:</strong> demo@znappystore.com / demo123</p>
-          <p><strong>Error Test:</strong> network@error.com / any</p>
-          <p><strong>Invalid:</strong> wrong@email.com / wrong</p>
+          <p>
+            <strong>Valid:</strong> demo@znappystore.com / demo123
+          </p>
+          <p>
+            <strong>Error Test:</strong> network@error.com / any
+          </p>
+          <p>
+            <strong>Invalid:</strong> wrong@email.com / wrong
+          </p>
         </div>
       </div>
     </div>
   );
 };
 
-export default Login; 
+export default Login;

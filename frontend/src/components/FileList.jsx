@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { fileAPI } from "../services/api";
 import { useNotification } from "../contexts/NotificationContext";
+import FilePreviewModal from "./FilePreviewModal";
 import "./FileList.css";
 
 const FileList = ({ refreshTrigger }) => {
@@ -13,6 +14,8 @@ const FileList = ({ refreshTrigger }) => {
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [imageLoadingStates, setImageLoadingStates] = useState(new Map());
   const [imageErrorStates, setImageErrorStates] = useState(new Set());
+  const [previewFile, setPreviewFile] = useState(null);
+  const [showPreview, setShowPreview] = useState(false);
   const { showNotification } = useNotification();
 
   const fetchFiles = useCallback(
@@ -201,6 +204,22 @@ const FileList = ({ refreshTrigger }) => {
     } finally {
       setBulkDeleting(false);
     }
+  };
+
+  const handlePreview = (file) => {
+    setPreviewFile(file);
+    setShowPreview(true);
+  };
+
+  const handleClosePreview = () => {
+    setShowPreview(false);
+    setPreviewFile(null);
+  };
+
+  const isPreviewableFile = (type) => {
+    return (
+      type === "text/plain" || type === "text/markdown" || type === "text/csv"
+    );
   };
 
   const formatDate = (dateString) => {
@@ -424,6 +443,16 @@ const FileList = ({ refreshTrigger }) => {
             </div>
 
             <div className="file-card-actions">
+              {isPreviewableFile(file.type) && (
+                <button
+                  className="preview-file-btn"
+                  onClick={() => handlePreview(file)}
+                  disabled={bulkDeleting}
+                  title={`Preview ${file.filename}`}
+                >
+                  👁️ Preview
+                </button>
+              )}
               <button
                 className="download-file-btn"
                 onClick={() => handleDownload(file)}
@@ -465,6 +494,12 @@ const FileList = ({ refreshTrigger }) => {
           </div>
         ))}
       </div>
+
+      <FilePreviewModal
+        file={previewFile}
+        isOpen={showPreview}
+        onClose={handleClosePreview}
+      />
     </div>
   );
 };
