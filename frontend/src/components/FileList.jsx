@@ -16,6 +16,7 @@ const FileList = ({ refreshTrigger }) => {
   const [imageErrorStates, setImageErrorStates] = useState(new Set());
   const [previewFile, setPreviewFile] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [activeFilter, setActiveFilter] = useState("all");
   const { showNotification } = useNotification();
 
   const fetchFiles = useCallback(
@@ -137,15 +138,15 @@ const FileList = ({ refreshTrigger }) => {
   };
 
   const handleSelectAll = () => {
-    if (selectedFiles.size === files.length) {
+    if (selectedFiles.size === filteredFiles.length) {
       setSelectedFiles(new Set());
     } else {
-      setSelectedFiles(new Set(files.map((file) => file.id)));
+      setSelectedFiles(new Set(filteredFiles.map((file) => file.id)));
     }
   };
 
   const handleBulkDelete = async () => {
-    const selectedFilesList = files.filter((file) =>
+    const selectedFilesList = filteredFiles.filter((file) =>
       selectedFiles.has(file.id),
     );
 
@@ -253,6 +254,53 @@ const FileList = ({ refreshTrigger }) => {
     return type.startsWith("image/");
   };
 
+  const getFileTypeGroup = (type) => {
+    if (type.startsWith("image/")) return "images";
+    if (type === "text/plain" || type === "text/markdown") return "documents";
+    if (type === "text/csv" || type.includes("spreadsheet")) return "data";
+    if (
+      type.includes("pdf") ||
+      type.includes("word") ||
+      type.includes("presentation")
+    )
+      return "documents";
+    return "other";
+  };
+
+  const fileTypeFilters = [
+    { key: "all", label: "All Files", icon: "📁", count: files.length },
+    {
+      key: "images",
+      label: "Images",
+      icon: "🖼️",
+      count: files.filter((f) => getFileTypeGroup(f.type) === "images").length,
+    },
+    {
+      key: "documents",
+      label: "Documents",
+      icon: "📄",
+      count: files.filter((f) => getFileTypeGroup(f.type) === "documents")
+        .length,
+    },
+    {
+      key: "data",
+      label: "Data",
+      icon: "📊",
+      count: files.filter((f) => getFileTypeGroup(f.type) === "data").length,
+    },
+    {
+      key: "other",
+      label: "Other",
+      icon: "📦",
+      count: files.filter((f) => getFileTypeGroup(f.type) === "other").length,
+    },
+  ];
+
+  const filteredFiles =
+    activeFilter === "all"
+      ? files
+      : files.filter((file) => getFileTypeGroup(file.type) === activeFilter);
+
   const handleImageLoad = (fileId) => {
     setImageLoadingStates((prev) => {
       const newMap = new Map(prev);
@@ -317,11 +365,69 @@ const FileList = ({ refreshTrigger }) => {
     );
   }
 
+  if (filteredFiles.length === 0 && activeFilter !== "all") {
+    const activeFilterData = fileTypeFilters.find(
+      (f) => f.key === activeFilter,
+    );
+    return (
+      <div className="file-list-container">
+        <div className="file-list-header">
+          <div className="file-count">
+            {filteredFiles.length} of {files.length}{" "}
+            {files.length === 1 ? "file" : "files"}
+          </div>
+          <div className="header-actions">
+            <button
+              className="refresh-btn"
+              onClick={() => fetchFiles(true)}
+              disabled={loading || refreshing}
+            >
+              {refreshing ? "Updating..." : "🔄 Refresh"}
+            </button>
+          </div>
+        </div>
+
+        <div className="file-filters">
+          <div className="filter-tabs">
+            {fileTypeFilters.map((filter) => (
+              <button
+                key={filter.key}
+                className={`filter-tab ${activeFilter === filter.key ? "active" : ""}`}
+                onClick={() => setActiveFilter(filter.key)}
+                disabled={filter.count === 0}
+              >
+                <span className="filter-icon">{filter.icon}</span>
+                <span className="filter-label">{filter.label}</span>
+                <span className="filter-count">({filter.count})</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="empty-filtered-state">
+          <div className="empty-icon">{activeFilterData?.icon}</div>
+          <h3>No {activeFilterData?.label.toLowerCase()} found</h3>
+          <p>
+            You haven't uploaded any {activeFilterData?.label.toLowerCase()}{" "}
+            yet.
+          </p>
+          <button
+            className="clear-filter-btn"
+            onClick={() => setActiveFilter("all")}
+          >
+            Show All Files
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="file-list-container">
       <div className="file-list-header">
         <div className="file-count">
-          {files.length} {files.length === 1 ? "file" : "files"}
+          {filteredFiles.length} of {files.length}{" "}
+          {files.length === 1 ? "file" : "files"}
           {selectedFiles.size > 0 && (
             <span className="selected-count">
               ({selectedFiles.size} selected)
@@ -335,12 +441,15 @@ const FileList = ({ refreshTrigger }) => {
                 <input
                   type="checkbox"
                   checked={
-                    selectedFiles.size === files.length && files.length > 0
+                    selectedFiles.size === filteredFiles.length &&
+                    filteredFiles.length > 0
                   }
                   onChange={handleSelectAll}
                   disabled={loading || refreshing || bulkDeleting}
                 />
-                <span>Select All</span>
+                <span>
+                  Select All {activeFilter !== "all" ? `(${activeFilter})` : ""}
+                </span>
               </label>
               {selectedFiles.size > 0 && (
                 <button
@@ -375,8 +484,25 @@ const FileList = ({ refreshTrigger }) => {
         </div>
       </div>
 
+      <div className="file-filters">
+        <div className="filter-tabs">
+          {fileTypeFilters.map((filter) => (
+            <button
+              key={filter.key}
+              className={`filter-tab ${activeFilter === filter.key ? "active" : ""}`}
+              onClick={() => setActiveFilter(filter.key)}
+              disabled={filter.count === 0}
+            >
+              <span className="filter-icon">{filter.icon}</span>
+              <span className="filter-label">{filter.label}</span>
+              <span className="filter-count">({filter.count})</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="file-grid">
-        {files.map((file) => (
+        {filteredFiles.map((file) => (
           <div
             key={file.id}
             className={`file-card ${selectedFiles.has(file.id) ? "selected" : ""}`}
